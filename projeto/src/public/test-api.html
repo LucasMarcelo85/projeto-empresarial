@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        button {
+            padding: 10px;
+            margin: 10px 0;
+            cursor: pointer;
+        }
+
+        pre {
+            background-color: #f4f4f4;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Teste de API de Horários Disponíveis</h1>
+
+    <div>
+        <h2>Rota Antiga (Protegida)</h2>
+        <button id="testProtected">Testar Rota Protegida</button>
+        <pre id="protectedResult">Aguardando...</pre>
+    </div>
+
+    <div>
+        <h2>Nova Rota (Pública)</h2>
+        <button id="testPublic">Testar Rota Pública</button>
+        <pre id="publicResult">Aguardando...</pre>
+    </div>
+
+    <script>
+        document.getElementById('testProtected').addEventListener('click', async () => {
+            try {
+                const response = await fetch('http://localhost:3333/schedule/available-times?date=2025-07-03&barber_id=e41b4453-1298-44a3-95c4-998f396d8727');
+                const data = await response.json();
+                document.getElementById('protectedResult').textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('protectedResult').textContent = 'Erro: ' + error.message;
+            }
+        });
+
+        document.getElementById('testPublic').addEventListener('click', async () => {
+            try {
+                const response = await fetch('http://localhost:3333/public/available-times?date=2025-07-03&barber_id=e41b4453-1298-44a3-95c4-998f396d8727');
+                const data = await response.json();
+                document.getElementById('publicResult').textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('publicResult').textContent = 'Erro: ' + error.message;
+            }
+        });
+    </script>
+</body>
+
+</html>

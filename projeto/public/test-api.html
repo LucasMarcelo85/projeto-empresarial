@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+            color: #333;
+        }
+
+        h1 {
+            color: #d35400;
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 15px;
+        }
+
+        h2 {
+            color: #e67e22;
+            border-left: 5px solid #e67e22;
+            padding-left: 10px;
+            margin-top: 30px;
+        }
+
+        button {
+            padding: 10px 16px;
+            margin: 10px 0;
+            cursor: pointer;
+            background-color: #e67e22;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #d35400;
+        }
+
+        pre {
+            background-color: #f4f4f4;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            border-left: 5px solid #ccc;
+            font-family: monospace;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        input[type="date"],
+        input[type="text"] {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-left: 8px;
+        }
+
+        label {
+            font-weight: bold;
+        }
+
+        .test-section {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Teste de API de Horários Disponíveis</h1>
+
+    <div class="test-section">
+        <h2>Configurações de Teste</h2>
+        <div style="margin-bottom: 15px;">
+            <label for="dateInput">Data (YYYY-MM-DD): </label>
+            <input type="date" id="dateInput" value="2025-07-03">
+        </div>
+        <div style="margin-bottom: 15px;">
+            <label for="barberIdInput">ID do Barbeiro: </label>
+            <input type="text" id="barberIdInput" value="e41b4453-1298-44a3-95c4-998f396d8727" style="width: 300px;">
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>Rota Antiga (Protegida)</h2>
+        <button id="testProtected">Testar Rota Protegida</button>
+        <pre id="protectedResult">Aguardando...</pre>
+    </div>
+
+    <div class="test-section">
+        <h2>Nova Rota (Pública)</h2>
+        <button id="testPublic">Testar Rota Pública</button>
+        <pre id="publicResult">Aguardando...</pre>
+    </div>
+
+    <div class="test-section">
+        <h2>Teste de Desempenho</h2>
+        <p>Este teste executa 5 chamadas para cada endpoint e compara o tempo de resposta.</p>
+        <button id="performanceTest">Executar Teste de Desempenho</button>
+        <pre id="performanceResult">Aguardando...</pre>
+    </div>
+
+    <script>
+        async function testEndpoint(url, resultElementId) {
+            const resultElement = document.getElementById(resultElementId);
+            resultElement.textContent = 'Carregando...';
+            const startTime = performance.now();
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                const endTime = performance.now();
+                const timeElapsed = Math.round(endTime - startTime);
+
+                resultElement.textContent = `Tempo de resposta: ${timeElapsed}ms\n\n${JSON.stringify(data, null, 2)}`;
+                return { data, timeElapsed };
+            } catch (error) {
+                resultElement.textContent = `Erro: ${error.message}`;
+                return { error };
+            }
+        }
+
+        function getTestParameters() {
+            const date = document.getElementById('dateInput').value;
+            const barberId = document.getElementById('barberIdInput').value;
+            return { date, barberId };
+        }
+
+        document.getElementById('testProtected').addEventListener('click', async () => {
+            const { date, barberId } = getTestParameters();
+            await testEndpoint(
+                `http://localhost:3333/schedule/available-times?date=${date}&barber_id=${barberId}`,
+                'protectedResult'
+            );
+        });
+
+        document.getElementById('testPublic').addEventListener('click', async () => {
+            const { date, barberId } = getTestParameters();
+            await testEndpoint(
+                `http://localhost:3333/public/available-times?date=${date}&barber_id=${barberId}`,
+                'publicResult'
+            );
+        });
+
+        document.getElementById('performanceTest').addEventListener('click', async () => {
+            const { date, barberId } = getTestParameters();
+            const resultElement = document.getElementById('performanceResult');
+            resultElement.textContent = 'Executando testes de desempenho...';
+
+            const results = {
+                publicEndpoint: {
+                    times: [],
+                    avg: 0,
+                    min: Infinity,
+                    max: 0
+                },
+                protectedEndpoint: {
+                    times: [],
+                    avg: 0,
+                    min: Infinity,
+                    max: 0
+                }
+            };
+
+            // Executar 5 chamadas para cada endpoint
+            for (let i = 0; i < 5; i++) {
+                // Teste endpoint público
+                const publicUrl = `http://localhost:3333/public/available-times?date=${date}&barber_id=${barberId}`;
+                const publicResult = await testEndpoint(publicUrl, 'publicResult');
+                if (!publicResult.error) {
+                    results.publicEndpoint.times.push(publicResult.timeElapsed);
+                }
+
+                // Pequena pausa para não sobrecarregar
+                await new Promise(resolve => setTimeout(resolve, 200));
+
+                // Teste endpoint protegido
+                const protectedUrl = `http://localhost:3333/schedule/available-times?date=${date}&barber_id=${barberId}`;
+                const protectedResult = await testEndpoint(protectedUrl, 'protectedResult');
+                if (!protectedResult.error) {
+                    results.protectedEndpoint.times.push(protectedResult.timeElapsed);
+                }
+
+                await new Promise(resolve => setTimeout(resolve, 200));
+            }
+
+            // Calcular médias
+            if (results.publicEndpoint.times.length > 0) {
+                const sum = results.publicEndpoint.times.reduce((a, b) => a + b, 0);
+                results.publicEndpoint.avg = Math.round(sum / results.publicEndpoint.times.length);
+                results.publicEndpoint.min = Math.min(...results.publicEndpoint.times);
+                results.publicEndpoint.max = Math.max(...results.publicEndpoint.times);
+            }
+
+            if (results.protectedEndpoint.times.length > 0) {
+                const sum = results.protectedEndpoint.times.reduce((a, b) => a + b, 0);
+                results.protectedEndpoint.avg = Math.round(sum / results.protectedEndpoint.times.length);
+                results.protectedEndpoint.min = Math.min(...results.protectedEndpoint.times);
+                results.protectedEndpoint.max = Math.max(...results.protectedEndpoint.times);
+            }
+
+            // Exibir resultados
+            resultElement.textContent = JSON.stringify({
+                testDate: date,
+                barberId: barberId,
+                publicEndpoint: {
+                    average: results.publicEndpoint.avg + 'ms',
+                    min: results.publicEndpoint.min + 'ms',
+                    max: results.publicEndpoint.max + 'ms',
+                    allTimes: results.publicEndpoint.times.map(t => t + 'ms')
+                },
+                protectedEndpoint: {
+                    average: results.protectedEndpoint.avg + 'ms',
+                    min: results.protectedEndpoint.min + 'ms',
+                    max: results.protectedEndpoint.max + 'ms',
+                    allTimes: results.protectedEndpoint.times.map(t => t + 'ms')
+                },
+                conclusion: results.publicEndpoint.avg < results.protectedEndpoint.avg
+                    ? 'A rota pública é mais rápida!'
+                    : 'A rota protegida é mais rápida!'
+            }, null, 2);
+        });
+    </script>
+</body>
+
+</html>
